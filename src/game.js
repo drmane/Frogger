@@ -2,7 +2,7 @@
 
 var sprites = {
   frog: { sx: 0, sy: 0, w: 48, h: 48, frames: 1 },
-  bg: { sx: 433, sy: 0, w: 320, h: 480, frames: 1 },
+   bg: { sx: 433, sy: 0, w: 320, h: 480, frames: 1 },
   car1: { sx: 143, sy: 0, w: 48, h: 48, frames: 1 }, //left
   car2: { sx: 191, sy: 0, w: 48, h: 48, frames: 1 }, //right
   car3: { sx: 239, sy: 0, w: 96, h: 48, frames: 1 }, //left
@@ -26,15 +26,24 @@ var enemies = {
               B: 150, C: 1.2, E: 75 }
   */
 
-  car1: { x: 0 ,   y: 0, sprite: 'car1', v: 20, d: 'left' },
+  //f indicates the file (1-4) 1 is the lowest
 
-  car2: { x: 0,   y: 0, sprite: 'car2', v: 50, d: 'right' },
+  car1: { x: 320,   f: 1, sprite: 'car1', v: 20, d:'left' },
 
-  car3: { x: 0,   y: 0, sprite: 'car3', v: 30, d: 'left' },
+  car2: { x: -48,   f: 1, sprite: 'car2', v: 50, d:'right'},
 
-  car4: { x: 0,   y: 0, sprite: 'car4', v: 80, d: 'left' },
+  car3: { x: 320,   f: 1, sprite: 'car3', v: 30, d:'left'},
 
-  car5: { x: 0,   y: 0, sprite: 'car5', v: 60, d: 'right' }
+  car4: { x: 320,   f: 1, sprite: 'car4', v: 80, d:'left'},
+
+  car5: { x: -48,   f: 1, sprite: 'car5', v: 60, d:'right' }
+
+};
+
+//f indicates the file (1-3) 1 is the lowest
+var allies = {
+
+  trunk: { f: 1, sprite: 'trunk', v: 10}
 
 };
 
@@ -50,16 +59,16 @@ var position: {
 */
 
 var OBJECT_PLAYER = 1,
-    OBJECT_PLAYER_PROJECTILE = 2,
-    OBJECT_ENEMY = 4,
-    OBJECT_ENEMY_PROJECTILE = 8,
-    OBJECT_POWERUP = 16;
+    OBJECT_ENEMY = 2,
+    OBJECT_TRUNK= 4;
+    OBJECT_GOAL= 8;
 
 
 var startGame = function() {
   var ua = navigator.userAgent.toLowerCase();
 
   // Only 1 row of stars
+  /*
   if(ua.match(/android/)) {
     Game.setBoard(0,new Starfield(50,0.6,100,true));
   } else {
@@ -67,12 +76,36 @@ var startGame = function() {
     Game.setBoard(1,new Starfield(50,0.6,100));
     Game.setBoard(2,new Starfield(100,1.0,50));
   }  
-  Game.setBoard(3,new TitleScreen("Alien Invasion", 
-                                  "Press fire to start playing",
+  */
+    
+  //Background
+  var backgroundBoard = new GameBoard();
+  backgroundBoard.add(new Background());
+  Game.setBoard(0,backgroundBoard);
+    
+  //Start Screen (StartScreen board and Entites board share the same position)
+  Game.setBoard(1,new TitleScreen("FROGGER", 
+                                  "Press space to start playing",
                                   playGame));
+  
+  //Win screen
+  Game.setBoard(2,new TitleScreen("You win!", 
+                                  "Press space to play again",
+                                  playGame));
+
+  Game.setBoard(3,new TitleScreen("You lose!", 
+                                  "Press space to play again",
+                                  playGame));
+    
+  Game.setBoard(4,new GamePoints(0));
+    
+  Game.setActiveBoard(2,false);
+      
+  Game.setActiveBoard(3,false);
+    
 };
 
-
+/*
 var level1 = [
  // Start,   End, Gap,  Type,   Override
   [ 0,      4000,  500, 'step' ],
@@ -84,37 +117,65 @@ var level1 = [
   [ 22000,  25000, 400, 'wiggle', { x: 150 }],
   [ 22000,  25000, 400, 'wiggle', { x: 100 }]
 ];
+*/
 
+var level1 = [
+  // Start, Gap,  Type,   Override
+  [ 0, 5000, 'car1', {f:1, v:300} ],
+  [ 0, 3000, 'car2', {f:2, v:150}],
+  [ 0, 2500, 'car3', {f:3, v:250}],
+  [ 0, 1300, 'car4', {f:4, v:150}],
+  [ 0, 2500, 'trunk', {f:1,v:100}],
+  [ 0, 4000, 'trunk', {f:2,v:200}],
+  [ 0, 5000, 'trunk', {f:3,v:-100}]
+];
 
 
 var playGame = function() {
-  //Background
-  var backgroundBoard = new GameBoard();
-  backgroundBoard.add(new Background());
-  Game.setBoard(0,backgroundBoard);
-
+    
+  //Deactivate win / loose screens
+      
+  Game.setActiveBoard(2,false);
+      
+  Game.setActiveBoard(3,false);
+    
   //Entities
   var board = new GameBoard();
-  board.add(new Frog());
 
-  board.add(new Car(enemies.car1,{x:Game.width - sprites.car1.w,y:Game.height - 2 * 48}));
-  board.add(new Car(enemies.car2,{x:0, y:Game.height - 3 * 48}));
-  board.add(new Car(enemies.car3,{x:Game.width - sprites.car1.w,y:Game.height - 4 * 48}));
+
+  /*
+  board.add(new Car(enemies.car1,{f:1}));
+  board.add(new Car(enemies.car2,{f:2}));
+  board.add(new Car(enemies.car3,{f:3}));
+  board.add(new Car(enemies.car5,{f:4}));
+  board.add(new Trunk(allies.trunk,{f:1, v:20}));
+  board.add(new Trunk(allies.trunk,{f:2, v:-20}));
+  board.add(new Trunk(allies.trunk,{f:3, v:20}));
+  board.add(new Water());
+  board.add(new Home());
+  */
+    
+  board.add(new Water());
+  board.add(new Home());
+    
+  board.add(new Level(level1));
+  
+  board.add(new Frog(3));
+    
+  //board.add(new Level(level1,winGame));
+    
   Game.setBoard(1,board);
 };
 
 var winGame = function() {
-  Game.setBoard(3,new TitleScreen("You win!", 
-                                  "Press fire to play again",
-                                  playGame));
+  Game.setActiveBoard(2,true);
 };
 
 var loseGame = function() {
-  Game.setBoard(3,new TitleScreen("You lose!", 
-                                  "Press fire to play again",
-                                  playGame));
+  Game.setActiveBoard(3,true);
 };
 
+/*
 var Starfield = function(speed,opacity,numStars,clear) {
 
   // Set up the offscreen canvas
@@ -332,9 +393,10 @@ Explosion.prototype.step = function(dt) {
     this.board.remove(this);
   }
 };
+*/
 
 window.addEventListener("load", function() {
-  Game.initialize("game",sprites,playGame);
+  Game.initialize("game",sprites,startGame);
 });
 
 
@@ -356,23 +418,102 @@ var Background = function() {
 
 Background.prototype = new Sprite();
 
-var Frog = function() { 
+var Frog = function(lives) { 
 
-  this.setup('frog', {reloadTime: 0.20});
+  //reloadTime and level time is in seconds
+  this.setup('frog', {reloadTime: 0.20, levelTime: 60});
+  this.zIndex = 0;
 
   this.reload = this.reloadTime;
   this.x = Game.width/2 - this.w / 2;
   this.y = Game.height - this.h;
+  this.vx = 0; //Trunk movement
+  this.overTrunk = false; //Checks if the frog is over the trunk
+  this.count = 0;
+  this.movable = true;
+    
+  this.lives = lives;
+    
+  this.time = 0;
 
   this.step = function(dt) {
 
 
-    if(this.reload <= 0){
+    //Collision with trunks
+    var collision_t = this.board.collide(this,OBJECT_TRUNK);
 
-      if(Game.keys['left']) { this.x -= 48 }
-      else if(Game.keys['right']) { this.x += 48  }
-      else if(Game.keys['up']) { this.y -= 48 }
-      else if(Game.keys['down']) { this.y += 48 }
+    if(collision_t) {
+      //console.log("Trunk collision detected");
+        
+      this.onTrunk(collision_t.v);
+      this.x = this.x + this.vx * dt;
+        
+      //console.log("Updated Position: " + this.x);
+      //this.board.remove(this);
+    }
+      
+    //Collision with enemies (Water is considered an enemy)
+
+    //Check if the frog is over the trunk 
+    if(!this.overTrunk){ 
+      
+        var collision_e = this.board.collide(this,OBJECT_ENEMY);
+
+        if(collision_e) {
+
+            collision_e.hit();
+            this.hit();
+        
+            //this.board.add(new Death (this.x,this.y));
+            //this.board.remove(this);   
+        }
+    }
+      
+    //Collision with home
+    var collision_t = this.board.collide(this,OBJECT_GOAL);
+
+    if(collision_t) {
+      //console.log("Trunk collision detected");
+        
+        
+      if(this.movable) Game.points += this.points || 100;
+      this.movable = false;
+      winGame();
+    
+      //console.log("Updated Position: " + this.x);
+      //this.board.remove(this);
+    }
+      
+      //Animation
+      
+      //console.log("Current Count: " + this.count);
+      
+      if(this.count >= 1){
+
+          //console.log("Current Frame: " + this.frame);
+          
+          this.count++;
+
+          if(this.count % 5 == 0){
+              this.frame++;
+          }
+
+         if(this.frame >= 3 ) {
+
+              this.frame = 0;
+              this.count = 0;
+         }
+
+      }
+
+
+      
+    if((this.reload <= 0)&&this.movable){
+
+      if(Game.keys['left']) { this.x -= 48, this.count = 1, this.frame = 1; }
+      else if(Game.keys['right']) { this.x += 48 , this.count = 1, this.frame = 1;}
+      else if(Game.keys['up']) { this.y -= 48, this.count = 1, this.frame = 1; Game.points += this.points || 10;}
+      else if(Game.keys['down']) { this.y += 48,  this.count = 1, this.frame = 1; }
 
 
       if(this.x < 0) { this.x = 0; }
@@ -389,6 +530,19 @@ var Frog = function() {
     }
 
     this.reload-= dt;
+      
+    this.vx = 0;
+      
+    this.overTrunk = false;
+      
+    //Timer 
+    this.time += dt;
+      
+    //If the time passes, is like it has been hit  
+    if(this.time > this.levelTime){
+        this.hit();   
+    }
+    
 
     //console.log("Reload: " + this.reload);
     
@@ -398,10 +552,49 @@ var Frog = function() {
 Frog.prototype = new Sprite();
 
 
+Frog.prototype.hit = function() {
+
+  this.lives--;    
+
+  this.board.remove(this);
+    
+  this.board.add(new Death(this.x + this.w/2, 
+                                   this.y + this.h/2));
+    
+  if(this.lives == 0){
+    loseGame();   
+  }
+  else{
+      this.board.add(new Frog(this.lives));
+  } 
+    
+  //Game.points += this.points || 100;
+  //this.board.add(new Explosion(this.x + this.w/2, 
+  //                             this.y + this.h/2));
+
+};
+
+Frog.prototype.onTrunk = function(vTrunk) {
+
+  
+  //The overTrunk flag is updated
+  this.overTrunk = true;
+    
+  this.vx = vTrunk;
+    
+  //console.log("Velocity of the frog: " + vTrunk);
+  //Game.points += this.points || 100;
+  //this.board.add(new Explosion(this.x + this.w/2, 
+  //                             this.y + this.h/2));
+
+};
+
 var Car = function(blueprint,override) {
   this.merge(this.baseParameters);
   this.setup(blueprint.sprite,blueprint);
   this.merge(override);
+    
+  this.y = Game.height - 48 - override.f * 48;
 };
 
 Car.prototype = new Sprite();
@@ -411,13 +604,206 @@ Car.prototype.baseParameters = { x: 0,   y: 0, sprite: 'car1', v: 0, d: 'left' }
 
 Car.prototype.step = function(dt) {
 
-  if(this.d == 'right'){
-    this.x += this.v * dt;
-  }
-  else if(this.d == 'left'){
+  //Position recalculation
+    
+  if(this.d == 'left'){
     this.x -= this.v * dt;
   }
+  else{
+    this.x += this.v * dt;
+  }
+
+};
+
+Car.prototype.hit = function() {
+
+  this.board.remove(this);
+  //Game.points += this.points || 100;
+  //this.board.add(new Explosion(this.x + this.w/2, 
+  //                             this.y + this.h/2));
+
+};
+
+var Trunk = function(blueprint,override) {
+  this.merge(this.baseParameters);
+  this.setup(blueprint.sprite,blueprint);
+  this.merge(override);
+    
+  if(this.v > 0){
+      this.x = -sprites[blueprint["sprite"]].w;
+  }
+  else{
+      this.x = Game.width;
+  }
+    
+  this.y = 48 * override.f;
+
+};
+
+Trunk.prototype = new Sprite();
+Trunk.prototype.type = OBJECT_TRUNK;
+
+Trunk.prototype.baseParameters = { x: 0,   y: 0, sprite: 'car1', v: 0, d: 'left' };
+
+Trunk.prototype.step = function(dt) {
+
+  //Position recalculation
+  this.x += this.v * dt;
+
+};
+
+var Water = function() {
+    
+  this.x = 0;
+  this.y = 48;
+    
+  //Adjust here the width and height of the water (not with setup)
+  this.w = Game.width;
+  this.h = 144; 
+  /*
+  this.merge(this.baseParameters);
+  this.setup(blueprint.sprite,blueprint);
+  this.merge(override);
+  */
+};
+
+Water.prototype = new Sprite();
+Water.prototype.type = OBJECT_ENEMY;
+
+Water.prototype.step = function(dt) {};
+
+Water.prototype.draw = function(ctx) {};
 
 
+var Death = function(centerX,centerY) {
+
+  this.count = 0; //To slower animation
+  this.setup('death', { frame: 0 });
+  this.x = centerX - this.w/2;
+  this.y = centerY - this.h/2;
+};
+
+Death.prototype = new Sprite();
+
+Death.prototype.step = function(dt) {
+  this.count++;
+    
+  if(this.count % 8 == 0){
+      this.frame++;
+  }
+
+  if(this.frame >= 4 ) {
+    this.board.remove(this);
+      
+    //Add the lose screen
+    //Game.setBoard(2,new TitleScreen("YOU LOOSE", "Press space to start playing",playGame));
+  }
+                                    
+};
+
+var Home = function() {
+    
+  this.x = 0;
+  this.y = 0;
+    
+  //Adjust here the width and height of the water (not with setup)
+  this.w = Game.width;
+  this.h = 48; 
+  /*
+  this.merge(this.baseParameters);
+  this.setup(blueprint.sprite,blueprint);
+  this.merge(override);
+  */
+};
+
+Home.prototype = new Sprite();
+Home.prototype.type = OBJECT_GOAL;
+
+Home.prototype.step = function(dt) {};
+
+Home.prototype.draw = function(ctx) {};
+
+/*
+var Level = function(levelData,callback) {
+    
+
+};
+
+Level.prototype = new Sprite();
+
+Level.prototype.draw = function(ctx) {};
+
+Level.prototype.step = function(dt) {
+
+};
+*/
+
+//Time must be in miliseconds
+var Level = function(levelData,callback){
+    
+    this.levelData = [];
+    
+    for(var i = 0; i < levelData.length; i++) {
+        
+        this.levelData.push(Object.create(levelData[i]));
+    }
+    
+    this.t = 0;
+    
+    this.callback = callback;
   
 };
+
+Level.prototype = new Sprite();
+
+Level.prototype.step = function(dt) {
+    
+    var idx = 0, curShip = null;
+    
+    // Update the current time offset
+    this.t += dt * 1000;
+    
+    // Example levelData
+    // Start, Gap, Type, Override
+    // [[ 0,, 500, 'trunk', { f: 2,v:40 } ]
+    while(curShip = this.levelData[idx]) {
+        
+        if(curShip[0] < this.t) {
+
+            // Get the enemy definition blueprint
+            //var car = enemies[curShip[2]],
+            override = curShip[3];
+            
+            if(curShip[2] == 'trunk'){
+                var obj = allies[curShip[2]];   
+                
+                this.board.add(new Trunk(obj,override));
+            }
+            else{
+                var obj = enemies[curShip[2]];  
+                
+                this.board.add(new Car(obj,override));
+                
+            }
+
+            // Increment the start time by the gap
+            curShip[0] += curShip[1];
+        }
+
+        idx++;
+    }
+
+};
+
+Level.prototype.draw = function(ctx) {};
+
+
+
+
+
+
+
+
+
+
+

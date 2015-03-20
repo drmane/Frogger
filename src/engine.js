@@ -26,6 +26,8 @@
 
 var Game = new function() {                                                                  
   var boards = [];
+    
+  var activeBoards = [];
 
   // Game Initialization
   this.initialize = function(canvasElementId,sprite_data,callback) {
@@ -84,7 +86,7 @@ var Game = new function() {
     if(dt > maxTime) { dt = maxTime; }
 
     for(var i=0,len = boards.length;i<len;i++) {
-      if(boards[i]) { 
+      if(boards[i]&&activeBoards[i]) { 
         boards[i].step(dt);
         boards[i].draw(Game.ctx);
       }
@@ -92,8 +94,11 @@ var Game = new function() {
     lastTime = curTime;
   };
   
-  // Change an active game board
-  this.setBoard = function(num,board) { boards[num] = board; };
+  //Set a board (active by default)
+  this.setBoard = function(num,board) { boards[num] = board; activeBoards[num] = true };
+
+  //Change the status of the board 
+  this.setActiveBoard = function(num,active) { activeBoards[num] = active };
 
 
   this.setupMobile = function() {
@@ -243,6 +248,23 @@ var GameBoard = function() {
   // Call step on all objects and them delete
   // any object that have been marked for removal
   this.step = function(dt) { 
+      
+    //In each step of the GameBoard, the array of the objects is ordered
+    this.objects.sort( function(a,b){
+        
+        if(a.zIndex > b.zIndex ){
+            return -1;   
+        }
+        else if(a.zIndex < b.zIndex ){
+            return 1; 
+        }
+        else{
+            return 0;   
+        }
+        
+    });
+      
+      
     this.resetRemoved();
     this.iterate('step',dt);
     this.finalizeRemoved();
@@ -282,6 +304,10 @@ Sprite.prototype.setup = function(sprite,props) {
   this.frame = this.frame || 0;
   this.w =  SpriteSheet.map[sprite].w;
   this.h =  SpriteSheet.map[sprite].h;
+    
+  
+  this.zIndex = Number.MAX_VALUE;
+    
 };
 
 Sprite.prototype.merge = function(props) {
