@@ -2,13 +2,15 @@
 
 var sprites = {
   frog: { sx: 0, sy: 0, w: 48, h: 48, frames: 1 },
-   bg: { sx: 433, sy: 0, w: 320, h: 480, frames: 1 },
+   bg: { sx: 433, sy: 0, w: 320, h: 528, frames: 1 },
   car1: { sx: 143, sy: 0, w: 48, h: 48, frames: 1 }, //left
   car2: { sx: 191, sy: 0, w: 48, h: 48, frames: 1 }, //right
   car3: { sx: 239, sy: 0, w: 96, h: 48, frames: 1 }, //left
   car4: { sx: 335, sy: 0, w: 48, h: 48, frames: 1 }, //left
   car5: { sx: 383, sy: 0, w: 48, h: 48, frames: 1 }, //right
   trunk: { sx: 288, sy: 383, w: 142, h: 48, frames: 1 },
+  snake: { sx: 0, sy: 384, w: 90, h: 46 , frames: 3},
+  insect: { sx: 96, sy: 288, w: 40, h: 40 , frames: 1},  
   death: { sx: 0, sy: 143, w: 48, h: 48, frames: 4 }
 };
 
@@ -36,7 +38,11 @@ var enemies = {
 
   car4: { x: 320,   f: 1, sprite: 'car4', v: 80, d:'left'},
 
-  car5: { x: -48,   f: 1, sprite: 'car5', v: 60, d:'right' }
+  car5: { x: -48,   f: 1, sprite: 'car5', v: 60, d:'right' },
+    
+  snake: { x: 0, y: 240, sprite: 'snake', v: 10},
+    
+  insect: { x: 0, y: 192, sprite: 'insect', v: 10}
 
 };
 
@@ -61,11 +67,16 @@ var position: {
 var OBJECT_PLAYER = 1,
     OBJECT_ENEMY = 2,
     OBJECT_TRUNK= 4;
-    OBJECT_GOAL= 8;
+    OBJECT_INSECT = 8;
+    OBJECT_GOAL= 16;
 
 
 var startGame = function() {
   var ua = navigator.userAgent.toLowerCase();
+    
+  Game.numberLevels = 1;
+    
+  Game.currentLevel = 1;
 
   // Only 1 row of stars
   /*
@@ -121,12 +132,27 @@ var level1 = [
 
 var level1 = [
   // Start, Gap,  Type,   Override
-  [ 0, 5000, 'car1', {f:1, v:300} ],
-  [ 0, 3000, 'car2', {f:2, v:150}],
-  [ 0, 2500, 'car3', {f:3, v:250}],
-  [ 0, 1300, 'car4', {f:4, v:150}],
+  [ 0, 7000, 'car1', {f:1, v:300} ],
+  //[ 0, 5000, 'car2', {f:2, v:150}],
+  //[ 0, 5500, 'car3', {f:3, v:250}],
+  //[ 0, 3300, 'car4', {f:4, v:150}],
+  //[ 0, 180000, 'snake', {v: 50}], //3 minutes to resawn snake (level should be finished before 3 minutes)
+  //[ 0, 180000, 'insect', {v: 50}], //3 minutes to resawn snake (level should be finished before 3 minutes)
   [ 0, 2500, 'trunk', {f:1,v:100}],
   [ 0, 4000, 'trunk', {f:2,v:200}],
+  [ 0, 5000, 'trunk', {f:3,v:-100}]
+];
+
+var level2 = [
+  // Start, Gap,  Type,   Override
+  //[ 0, 5000, 'car1', {f:1, v:300} ],
+  //[ 0, 3000, 'car2', {f:2, v:150}],
+  //[ 0, 2500, 'car3', {f:3, v:250}],
+  //[ 0, 1300, 'car4', {f:4, v:150}],
+  //[ 0, 180000, 'snake', {v: 50}], //3 minutes to resawn snake (level should be finished before 3 minutes)
+  //[ 0, 180000, 'insect', {v: 50}], //3 minutes to resawn snake (level should be finished before 3 minutes)
+  [ 0, 3500, 'trunk', {f:1,v:100}],
+  [ 0, 3000, 'trunk', {f:2,v:200}],
   [ 0, 5000, 'trunk', {f:3,v:-100}]
 ];
 
@@ -158,8 +184,15 @@ var playGame = function() {
   board.add(new Water());
   board.add(new Home());
     
-  board.add(new Level(level1));
-  
+    
+  if(Game.currentLevel == 1){
+    board.add(new Level(level1));
+  }
+  if(Game.currentLevel == 2){
+    board.add(new Level(level2));
+  }
+
+    
   board.add(new Frog(3));
     
   //board.add(new Level(level1,winGame));
@@ -169,10 +202,32 @@ var playGame = function() {
 
 var winGame = function() {
   Game.setActiveBoard(2,true);
+    
+  Game.points = 0;
+    
+  Game.currentLevel = 1;
 };
 
 var loseGame = function() {
   Game.setActiveBoard(3,true);
+    
+  Game.points = 0;
+};
+
+
+var nextLevel = function(){
+    
+  console.log("Previous level: " + Game.currentLevel);
+    
+  Game.currentLevel++;  
+    
+  if(Game.currentLevel > Game.numberLevels){
+          
+    winGame();
+  }
+  else{
+    playGame();    
+  }
 };
 
 /*
@@ -421,7 +476,7 @@ Background.prototype = new Sprite();
 var Frog = function(lives) { 
 
   //reloadTime and level time is in seconds
-  this.setup('frog', {reloadTime: 0.20, levelTime: 60});
+  this.setup('frog', {reloadTime: 0.10, levelTime: 60});
   this.zIndex = 0;
 
   this.reload = this.reloadTime;
@@ -432,9 +487,17 @@ var Frog = function(lives) {
   this.count = 0;
   this.movable = true;
     
-  this.lives = lives;
+  Game.lives = lives;
     
-  this.time = 0;
+  this.time = this.levelTime;
+    
+    
+  //To control points increase
+  this.currentPosition = 0;
+    
+  this.mostAdvancedPosition = 0;
+    
+  this.rotation = 0;
 
   this.step = function(dt) {
 
@@ -477,11 +540,24 @@ var Frog = function(lives) {
         
         
       if(this.movable) Game.points += this.points || 100;
-      this.movable = false;
-      winGame();
+        
+      if(Game.currentLevel == Game.numberLevels){
+            this.movable = false;
+      }
+
+      collision_t.hit();
     
       //console.log("Updated Position: " + this.x);
       //this.board.remove(this);
+    }
+      
+    //Collision with insects
+    var collision_t = this.board.collide(this,OBJECT_INSECT);
+
+    if(collision_t) {
+      
+        
+        collision_e.hit();
     }
       
       //Animation
@@ -510,12 +586,32 @@ var Frog = function(lives) {
       
     if((this.reload <= 0)&&this.movable){
 
-      if(Game.keys['left']) { this.x -= 48, this.count = 1, this.frame = 1; }
-      else if(Game.keys['right']) { this.x += 48 , this.count = 1, this.frame = 1;}
-      else if(Game.keys['up']) { this.y -= 48, this.count = 1, this.frame = 1; Game.points += this.points || 10;}
-      else if(Game.keys['down']) { this.y += 48,  this.count = 1, this.frame = 1; }
+      if(Game.keys['left']) { this.x -= 48; this.count = 1; this.frame = 1; this.rotate=Math.PI + Math.PI / 2;}
+      else if(Game.keys['right']) { this.x += 48 ; this.count = 1; this.frame = 1;this.rotate= Math.PI / 2}
+      else if(Game.keys['up']) { this.y -= 48; this.count = 1; this.frame = 1; 
+                                
+                                this.rotate=0;
+                            
+                                this.currentPosition++; 
+                                
+                                    if(this.mostAdvancedPosition < this.currentPosition){
 
+                                        Game.points += this.points || 10;
 
+                                        this.mostAdvancedPosition = this.currentPosition;
+                                    }
+                               }
+      else if(Game.keys['down']) { this.y += 48;  this.count = 1; this.frame = 1;
+                                  
+                                    this.rotate = Math.PI;
+                                 
+                                 
+                                    if(this.currentPosition != 0){
+                                        
+                                        this.currentPosition--;
+                                    }
+                                 }
+    
       if(this.x < 0) { this.x = 0; }
       else if(this.x > Game.width - this.w) { 
         this.x = Game.width - this.w;
@@ -535,37 +631,111 @@ var Frog = function(lives) {
       
     this.overTrunk = false;
       
-    //Timer 
-    this.time += dt;
+    
+    if(this.movable){
+        
+        //Timer (time passes if the frog can move) 
+        this.time -= dt;
+        
+    }
       
     //If the time passes, is like it has been hit  
-    if(this.time > this.levelTime){
+    if(this.time < 0){
         this.hit();   
     }
+    
     
 
     //console.log("Reload: " + this.reload);
     
   };
+    
+  //Override the dra metho to paint the frog, lives and time
+  this.draw = function(ctx){
+      
+    console.log("Rotation: " + this.rotate);
+      
+    ctx.save();
+      
+    ctx.rotate(this.rotate);
+      
+    ctx.restore();
+      
+    ctx.save();
+      
+    //Draw the Frog
+      
+    SpriteSheet.draw(ctx,this.sprite,this.x,this.y,this.frame);
+      
+    //Draw the time counter
+      
+    ctx.font = "bold 18px arial";
+    ctx.fillStyle= "#FFFFFF";
+
+    var txt = "Time: "; 
+      
+    ctx.fillText(txt,240,20);
+      
+    if(this.time < 10) 
+    {
+        ctx.fillStyle= "#FF0000";
+    } 
+    
+    txt = Math.floor(this.time);
+      
+      
+
+    ctx.fillText(txt,292,20);
+    ctx.restore();
+      
+    //Draw the number of lives
+    ctx.font = "bold 18px arial";
+    ctx.fillStyle= "#FFFFFF";
+
+    SpriteSheet.drawScale(ctx,this.sprite,175,0,24,24,0);
+      
+    var txt = "x" + Game.lives;
+      
+    ctx.fillText(txt,198,20);
+      
+    //Draw the current level
+      
+    ctx.font = "bold 18px arial";
+    ctx.fillStyle= "#FFFFFF";
+      
+    var txt = "L:" + Game.currentLevel; 
+      
+      
+    ctx.fillText(txt,135,20);
+      
+  };
 };
+
+
 
 Frog.prototype = new Sprite();
 
 
 Frog.prototype.hit = function() {
 
-  this.lives--;    
+  Game.lives--;   
+    
+  //Copy the most advanced position of the frog
+  var backup = this.mostAdvancedPosition;
 
   this.board.remove(this);
     
   this.board.add(new Death(this.x + this.w/2, 
                                    this.y + this.h/2));
     
-  if(this.lives == 0){
+  if(Game.lives == 0){
     loseGame();   
   }
   else{
-      this.board.add(new Frog(this.lives));
+      
+      var f = new Frog(Game.lives);
+      f.mostAdvancedPosition = backup;
+      this.board.add(f);
   } 
     
   //Game.points += this.points || 100;
@@ -636,7 +806,7 @@ var Trunk = function(blueprint,override) {
       this.x = Game.width;
   }
     
-  this.y = 48 * override.f;
+  this.y = 48 + 48 * override.f;
 
 };
 
@@ -655,7 +825,7 @@ Trunk.prototype.step = function(dt) {
 var Water = function() {
     
   this.x = 0;
-  this.y = 48;
+  this.y = 96;
     
   //Adjust here the width and height of the water (not with setup)
   this.w = Game.width;
@@ -673,6 +843,8 @@ Water.prototype.type = OBJECT_ENEMY;
 Water.prototype.step = function(dt) {};
 
 Water.prototype.draw = function(ctx) {};
+
+Water.prototype.hit = function() {};
 
 
 var Death = function(centerX,centerY) {
@@ -704,7 +876,7 @@ Death.prototype.step = function(dt) {
 var Home = function() {
     
   this.x = 0;
-  this.y = 0;
+  this.y = 48;
     
   //Adjust here the width and height of the water (not with setup)
   this.w = Game.width;
@@ -722,6 +894,8 @@ Home.prototype.type = OBJECT_GOAL;
 Home.prototype.step = function(dt) {};
 
 Home.prototype.draw = function(ctx) {};
+
+Home.prototype.hit = function() { nextLevel();};
 
 /*
 var Level = function(levelData,callback) {
@@ -779,6 +953,16 @@ Level.prototype.step = function(dt) {
                 
                 this.board.add(new Trunk(obj,override));
             }
+            else if(curShip[2] == 'snake'){
+                var obj = enemies[curShip[2]];   
+                
+                this.board.add(new Snake(obj,override));
+            }
+            else if(curShip[2] == 'insect'){
+                var obj = enemies[curShip[2]];   
+                
+                this.board.add(new Insect(obj,override));
+            }
             else{
                 var obj = enemies[curShip[2]];  
                 
@@ -797,9 +981,112 @@ Level.prototype.step = function(dt) {
 
 Level.prototype.draw = function(ctx) {};
 
+var Snake = function(blueprint,override) {
+  this.merge(this.baseParameters);
+  this.setup(blueprint.sprite,blueprint);
+  this.merge(override);
+    
+  this.count = 0; 
+};
+
+Snake.prototype = new Sprite();
+Snake.prototype.type = OBJECT_ENEMY;
+
+Snake.prototype.baseParameters = { x: 0,   y: 0, sprite: 'snake', v: 0 };
+
+Snake.prototype.step = function(dt) {
+
+  //Position recalculation
+    
+  if((this.x > Game.width - this.w)||(this.x < 0)){
+    this.v = -this.v;  
+  }
+
+    
+  this.x -= this.v * dt;
+    
+  //Animation
+  this.count++;
+    
+  if(this.count % 15 == 0){
+      this.frame++;
+  }
+
+  if(this.frame >= 3 ) {
+    //this.board.remove(this);
+      
+    this.count = 0;
+    this.frame = 1;
+  }
+    
+};
+
+Snake.prototype.draw = function(ctx) {
+    
+
+  
+    if(this.v > 0){
+          SpriteSheet.draw(ctx,this.sprite,this.x,this.y,this.frame);
+    }
+    else{
+
+    
+          SpriteSheet.draw(ctx,this.sprite,this.x,this.y,this.frame);
+    
+
+    }
+    
+};
+
+Snake.prototype.hit = function(){
+    
+};
+
+var Insect = function(blueprint,override) {
+  this.merge(this.baseParameters);
+  this.setup(blueprint.sprite,blueprint);
+  this.merge(override);
+};
+
+Insect.prototype = new Sprite();
+Insect.prototype.type = OBJECT_INSECT;
+
+Insect.prototype.baseParameters = { zIndex: 0, x: 0,   y: 0, sprite: 'insect', v: 0 };
+
+Insect.prototype.step = function(dt) {
+
+  //Position recalculation
+    
+  if((this.x > Game.width - this.w)||(this.x < 0)){
+    this.v = -this.v;  
+  }
+
+    
+  this.x -= this.v * dt;
+    
+};
+
+Insect.prototype.draw = function(ctx) {
+    
+
+  
+    if(this.v > 0){
+          SpriteSheet.draw(ctx,this.sprite,this.x,this.y,this.frame);
+    }
+    else{
+
+    
+          SpriteSheet.draw(ctx,this.sprite,this.x,this.y,this.frame);
+    
+
+    }
+    
+};
 
 
-
+Insect.prototype.hit = function(){
+    Game.points += this.points || 10;
+};
 
 
 
